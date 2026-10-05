@@ -1,0 +1,1931 @@
+<!doctype html>
+<html lang="th">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Quantum Courier • Dimension Lab</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg: #0b1020;
+        --panel: #141c30;
+        --line: #293550;
+        --text: #e6edf8;
+        --muted: #9cacc9;
+        --a: #65dfc9;
+        --b: #bd9cff;
+      }
+      * {
+        box-sizing: border-box;
+      }
+      body {
+        margin: 0;
+        background:
+          radial-gradient(ellipse at 10% 0, #172947, transparent 55%), var(--bg);
+        color: var(--text);
+        font:
+          15px/1.6 system-ui,
+          sans-serif;
+      }
+      main {
+        max-width: 1320px;
+        margin: auto;
+        padding: 30px 24px;
+      }
+      header {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        align-items: center;
+        margin-bottom: 24px;
+      }
+      h1 {
+        font-size: 32px;
+        letter-spacing: -1px;
+        margin: 0;
+      }
+      h2 {
+        font-size: 18px;
+        margin: 0 0 14px;
+      }
+      p {
+        margin: 6px 0;
+        color: var(--muted);
+      }
+      .eyebrow {
+        font-size: 11px;
+        color: var(--a);
+        letter-spacing: 3px;
+        font-weight: 800;
+      }
+      .badge {
+        border: 1px solid var(--line);
+        border-radius: 30px;
+        padding: 7px 15px;
+        color: var(--a);
+        white-space: nowrap;
+      }
+      .layout {
+        display: grid;
+        grid-template-columns: 260px minmax(0, 1fr);
+        gap: 20px;
+      }
+      .panel {
+        background: var(--panel);
+        border: 1px solid var(--line);
+        border-radius: 16px;
+        padding: 20px;
+        margin-bottom: 18px;
+      }
+      button,
+      select,
+      input {
+        font: inherit;
+      }
+      button,
+      select,
+      input[type="number"] {
+        border: 1px solid var(--line);
+        background: #1b2740;
+        color: var(--text);
+        border-radius: 8px;
+        padding: 9px 12px;
+      }
+      button {
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      button:hover {
+        background: #2a3b5a;
+      }
+      button:focus-visible,
+      select:focus-visible,
+      input:focus-visible {
+        outline: 2px solid var(--a);
+        outline-offset: 3px;
+      }
+      button:disabled {
+        opacity: 0.4;
+        cursor: default;
+      }
+      .primary {
+        background: var(--a);
+        color: #082921;
+        font-weight: 750;
+      }
+      .primary:hover {
+        background: #a1f1e2;
+      }
+      .tools {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+      }
+      .tool {
+        text-align: left;
+      }
+      .tool.active {
+        border-color: var(--a);
+        box-shadow: inset 0 0 0 1px var(--a);
+      }
+      label {
+        display: block;
+        color: var(--muted);
+        font-size: 13px;
+        margin: 12px 0 5px;
+      }
+      select {
+        width: 100%;
+      }
+      .inputs {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 10px;
+      }
+      .inputs input {
+        width: 100%;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap;
+      }
+      .maps {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 16px;
+      }
+      [hidden] {
+        display: none !important;
+      }
+      .map {
+        min-width: 0;
+      }
+      .map-title {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+      }
+      .map-title strong {
+        color: var(--a);
+      }
+      .map:nth-child(2) strong {
+        color: var(--b);
+      }
+      .map-title small {
+        color: var(--muted);
+      }
+      .grid {
+        display: grid;
+        gap: 3px;
+        touch-action: none;
+        user-select: none;
+      }
+      .cell {
+        padding: 0;
+        aspect-ratio: 1;
+        border-radius: 5px;
+        background: #202d47;
+        border: 1px solid #30405b;
+        min-width: 0;
+        font-size: clamp(10px, 1.4vw, 18px);
+        position: relative;
+      }
+      .cell.wall {
+        background: #48556e;
+        border-color: #637089;
+      }
+      .cell.portal {
+        box-shadow: inset 0 0 0 2px var(--portal-color, var(--b));
+        color: var(--b);
+      }
+      .cell.pending {
+        outline: 3px dashed #ffdc80;
+        z-index: 1;
+      }
+      .cell.portal::after {
+        content: attr(data-portal);
+        position: absolute;
+        bottom: 0;
+        right: 2px;
+        font-size: 8px;
+        color: var(--portal-color);
+      }
+      .cell.parcel::before {
+        content: attr(data-parcel);
+        position: absolute;
+        top: 0;
+        left: 1px;
+        font-size: 10px;
+        line-height: 1.2;
+        background: #152039;
+        border-radius: 3px;
+        z-index: 2;
+      }
+      .cell.collected::before {
+        opacity: 0.35;
+        text-decoration: line-through;
+      }
+      .cell.frontier {
+        background: #634d29;
+      }
+      .cell.expanded {
+        background: #2d5570;
+      }
+      .cell.path {
+        background: #24756a;
+        border-color: #65dfc9;
+      }
+      .cell.current {
+        outline: 2px solid white;
+        z-index: 1;
+      }
+      .cell.start {
+        color: #77f2c9;
+        font-weight: 900;
+      }
+      .cell.goal {
+        color: #ffdf8b;
+        font-weight: 900;
+      }
+      .cell .order {
+        position: absolute;
+        bottom: 0;
+        right: 2px;
+        font-size: 9px;
+        color: white;
+      }
+      .legend {
+        display: flex;
+        gap: 14px;
+        flex-wrap: wrap;
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 16px;
+      }
+      .dot {
+        display: inline-block;
+        width: 9px;
+        height: 9px;
+        border-radius: 2px;
+        margin-right: 5px;
+      }
+      .status {
+        border-left: 3px solid var(--a);
+        padding: 9px 13px;
+        background: #10192c;
+        margin: 14px 0;
+        min-height: 44px;
+      }
+      .controls {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+      .playback {
+        border-top: 1px solid var(--line);
+        padding-top: 15px;
+        margin-top: 15px;
+      }
+      .playback input {
+        width: 110px;
+      }
+      .table-wrap {
+        overflow: auto;
+      }
+      table {
+        border-collapse: collapse;
+        width: 100%;
+        font-size: 13px;
+        white-space: nowrap;
+      }
+      th,
+      td {
+        text-align: left;
+        border-bottom: 1px solid var(--line);
+        padding: 12px 10px;
+      }
+      th {
+        color: var(--muted);
+        font-weight: 500;
+      }
+      td:first-child {
+        font-weight: 750;
+        color: var(--a);
+      }
+      .note {
+        font-size: 12px;
+        color: var(--muted);
+      }
+      details {
+        margin-top: 15px;
+      }
+      summary {
+        cursor: pointer;
+        color: var(--a);
+      }
+      .inspector {
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 12px;
+        min-height: 20px;
+      }
+      footer {
+        color: var(--muted);
+        font-size: 12px;
+        margin-top: 14px;
+      }
+      button.wide {
+        width: 100%;
+        margin-top: 10px;
+      }
+      @media (max-width: 950px) {
+        .layout {
+          grid-template-columns: 1fr;
+        }
+        aside {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 16px;
+        }
+        aside .panel {
+          margin: 0;
+        }
+        .maps {
+          gap: 12px;
+        }
+      }
+      @media (max-width: 600px) {
+        main {
+          padding: 18px 12px;
+        }
+        header {
+          align-items: flex-start;
+        }
+        .badge {
+          display: none;
+        }
+        h1 {
+          font-size: 27px;
+        }
+        aside,
+        .maps {
+          grid-template-columns: 1fr;
+        }
+        .panel {
+          padding: 15px;
+        }
+        .cell {
+          font-size: 18px;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div>
+          <div class="eyebrow">BUILD · SEARCH · DISCOVER</div>
+          <h1>Quantum Courier</h1>
+          <p>ออกแบบด่านคู่ขนาน แล้วให้ AI หาเส้นทางส่งพัสดุที่คุ้มที่สุด</p>
+        </div>
+        <span class="badge">◈ Dimension Lab</span>
+      </header>
+      <div class="layout">
+        <aside>
+          <section class="panel">
+            <h2>01 / ออกแบบด่าน</h2>
+            <div class="tools" id="tools">
+              <button class="tool active" data-tool="wall">▧ กำแพง</button
+              ><button class="tool" data-tool="erase">⌫ ยางลบ</button
+              ><button class="tool" data-tool="portal">◎ พอร์ทัล</button
+              ><button class="tool" data-tool="start">S จุดเริ่มต้น</button
+              ><button class="tool" data-tool="goal">G ทางออก</button
+              ><button class="tool" data-tool="parcel">📦 พัสดุ</button>
+            </div>
+            <p class="note">
+              คลิกหรือลากเพื่อวาด • พอร์ทัล:
+              คลิกสองช่องในมิติเดียวกันหรือข้ามมิติ เพื่อเชื่อมแบบสองทาง
+              เลือกเดินต่อหรือวาร์ปได้ พิกัดแสดงเป็น (แถว, คอลัมน์) เริ่มที่ 1
+              ลบปลายหนึ่งจะลบทั้งคู่
+            </p>
+            <button id="cancelPortal" class="wide" disabled>
+              ยกเลิกปลายแรก (Esc)
+            </button>
+            <p class="note">
+              วางพัสดุได้สูงสุด 6 ชิ้น • เก็บอัตโนมัติเมื่อเดินถึง • เดินผ่าน G
+              ได้ แต่จบด่านเมื่อเก็บครบแล้วเท่านั้น • ยางลบใช้ลบพัสดุได้
+            </p>
+            <label for="preset">ด่านตัวอย่าง</label
+            ><select id="preset">
+              <option value="collect">เก็บพัสดุข้ามมิติ</option>
+              <option value="roundtrip">ข้ามมิติไป–กลับ</option>
+              <option value="cross">ส่งข้ามมิติ</option>
+              <option value="local">ทางลัดในมิติเดียวกัน</option>
+              <option value="open">พื้นที่ว่าง</option>
+              <option value="blocked">ทางออกถูกปิด</option></select
+            ><button id="loadPreset" class="wide">โหลดด่านตัวอย่าง</button>
+            <div class="inputs">
+              <div>
+                <label for="rows">แถว (4–20)</label
+                ><input id="rows" type="number" min="4" max="20" value="8" />
+              </div>
+              <div>
+                <label for="cols">คอลัมน์ (4–20)</label
+                ><input id="cols" type="number" min="4" max="20" value="8" />
+              </div>
+            </div>
+            <button class="wide" id="newMap">
+              สร้างด่านใหม่ 2 มิติตามขนาด
+            </button>
+            <div class="row" style="margin-top: 12px">
+              <button id="undo">↶ ย้อนกลับ</button
+              ><button id="clear">ล้างผล</button>
+            </div>
+          </section>
+          <section class="panel">
+            <h2>02 / มิติและกติกา</h2>
+            <div class="inputs">
+              <div>
+                <label for="dimensionRows">แถวมิติใหม่ (4–20)</label
+                ><input
+                  id="dimensionRows"
+                  type="number"
+                  min="4"
+                  max="20"
+                  value="8"
+                />
+              </div>
+              <div>
+                <label for="dimensionCols">คอลัมน์มิติใหม่ (4–20)</label
+                ><input
+                  id="dimensionCols"
+                  type="number"
+                  min="4"
+                  max="20"
+                  value="8"
+                />
+              </div>
+            </div>
+            <button id="addDimension" class="wide">
+              ＋ เพิ่มมิติ (สูงสุด 6)</button
+            ><label for="deleteDimensionSelect">จัดการมิติ</label
+            ><select id="deleteDimensionSelect"></select>
+            <div class="inputs">
+              <div>
+                <label for="resizeRows">ปรับจำนวนแถว</label
+                ><input id="resizeRows" type="number" min="4" max="20" />
+              </div>
+              <div>
+                <label for="resizeCols">ปรับจำนวนคอลัมน์</label
+                ><input id="resizeCols" type="number" min="4" max="20" />
+              </div>
+            </div>
+            <button id="resizeDimension" class="wide">
+              ปรับขนาดมิติที่เลือก</button
+            ><button id="deleteDimension" class="wide">ลบมิติที่เลือก</button>
+            <p class="note">
+              เหลืออย่างน้อย 1 มิติ • ย้าย S/G ก่อนลบ •
+              พอร์ทัลที่เชื่อมมิติที่ลบจะถูกลบทั้งคู่ • ย้อนกลับได้
+            </p>
+            <div class="inputs">
+              <div>
+                <label for="moveCost">ค่าเดิน</label
+                ><input
+                  id="moveCost"
+                  type="number"
+                  min="1"
+                  max="100"
+                  value="1"
+                />
+              </div>
+              <div>
+                <label for="switchCost">ค่าวาร์ป</label
+                ><input
+                  id="switchCost"
+                  type="number"
+                  min="1"
+                  max="100"
+                  value="4"
+                />
+              </div>
+            </div>
+            <p class="note">
+              Cost = ก้าวเดิน × ค่าเดิน + ครั้งวาร์ป × ค่าวาร์ป
+            </p>
+            <button id="save" class="wide">↓ บันทึกด่าน JSON</button
+            ><button id="load" class="wide">↑ โหลดด่าน JSON</button
+            ><input
+              id="file"
+              type="file"
+              accept=".json,application/json"
+              hidden
+            />
+            <p class="note">บันทึกด่านล่าสุดในเบราว์เซอร์อัตโนมัติเมื่อทำได้</p>
+          </section>
+        </aside>
+        <div>
+          <section class="panel">
+            <div class="map-title">
+              <h2>03 / ทดสอบเส้นทาง</h2>
+              <span class="note" id="dimensions"></span>
+            </div>
+            <div class="controls">
+              <button id="ucs">Run UCS</button><button id="astar">Run A*</button
+              ><button id="compare" class="primary">▶ เปรียบเทียบทั้งสอง</button
+              ><button id="stopSearch" disabled>หยุดค้นหา</button>
+            </div>
+            <div id="status" class="status" role="status" aria-live="polite">
+              พร้อมออกแบบด่าน
+            </div>
+            <div class="row" style="margin-bottom: 12px">
+              <label
+                >แสดงมิติ
+                <select id="viewLeft"></select></label
+              ><label
+                >คู่กับ
+                <select id="viewRight"></select
+              ></label>
+            </div>
+            <div class="maps" id="maps"></div>
+            <div class="legend">
+              <span><i class="dot" style="background: #634d29"></i>รอสำรวจ</span
+              ><span
+                ><i class="dot" style="background: #2d5570"></i>สำรวจแล้ว</span
+              ><span
+                ><i class="dot" style="background: #24756a"></i
+                >เส้นทางคำตอบ</span
+              ><span
+                >P1/P2 คู่พอร์ทัล · S เริ่ม · G ทางออก · 📦 พัสดุ · 🚚
+                ผู้ส่ง</span
+              >
+            </div>
+            <div class="row playback">
+              <select
+                id="replay"
+                aria-label="ผลสำหรับแสดงภาพ"
+                style="width: 110px"
+              >
+                <option value="UCS">UCS</option>
+                <option value="ASTAR">A*</option></select
+              ><button id="play">▶ เล่น</button
+              ><button id="step">ทีละขั้น</button
+              ><button id="end">ดูคำตอบ</button
+              ><label for="speed" style="margin: 0">ความเร็ว</label
+              ><input type="range" id="speed" min="1" max="10" value="7" /><span
+                id="progress"
+                class="note"
+                >0 / 0</span
+              >
+            </div>
+            <div class="note" id="parcelProgress" aria-live="polite">
+              พัสดุ: 0 / 0
+            </div>
+            <div class="inspector" id="inspect">
+              เลือกค้นหาเพื่อดูค่า g, h และ f
+            </div>
+          </section>
+          <section class="panel">
+            <div class="map-title">
+              <h2>ผลการทดลอง</h2>
+              <button id="csv">↓ CSV</button>
+            </div>
+            <div class="table-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>วิธี</th>
+                    <th>ผล</th>
+                    <th>พัสดุ</th>
+                    <th>Cost</th>
+                    <th>ก้าว</th>
+                    <th>วาร์ป</th>
+                    <th>ข้ามมิติ</th>
+                    <th>Expanded</th>
+                    <th>Max Memory³</th>
+                    <th>Peak frontier¹</th>
+                    <th>H expanded</th>
+                    <th>H peak</th>
+                    <th>H states</th>
+                    <th>เวลา² (ms)</th>
+                  </tr>
+                </thead>
+                <tbody id="results">
+                  <tr>
+                    <td colspan="14">ยังไม่มีผลการค้นหา</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <p class="note">
+              ¹ จำนวนรายการใน heap สูงสุด รวมรายการเก่าที่รอข้าม
+              เฉพาะการค้นหาหลัก ไม่ใช่หน่วยความจำรวมเป็นไบต์<br />² มัธยฐาน 3
+              รอบเมื่อมีพัสดุ หรือ 15 รอบหลัง warm-up รวมเตรียม heuristic
+              ไม่รวมภาพเคลื่อนไหวและบันทึก trace และเวลาพักให้หน้าจอตอบสนอง;
+              เวลาต่างกันได้ตามเครื่อง
+            </p>
+            <p class="note">
+              ³ Max Memory = จำนวนรายการสูงสุดที่เก็บพร้อมกันใน heap + gScore +
+              cameFrom + ตาราง heuristic + ตารางเชื่อมพอร์ทัล + ดัชนีพัสดุ
+              รวมช่วงเตรียม heuristic โดยวัด ณ เวลาเดียวกัน
+              เป็นตัวชี้วัดจำนวนรายการ ไม่ใช่ไบต์ ไม่รวมแผนที่
+              ข้อมูลภาพเคลื่อนไหว เส้นทางผลลัพธ์ และตัวแปรชั่วคราว
+            </p>
+            <details>
+              <summary>หลักการค้นหาและวิธีอ่านผล</summary>
+              <p class="note">
+                State = (แถว, คอลัมน์, มิติ, ชุดพัสดุที่เก็บแล้ว) · UCS เลือก g
+                ต่ำสุด · A* เลือก f = g + h ต่ำสุด
+                และตัดสินกรณีเสมอด้วยลำดับเข้าคิว ทั้งสองวิธีลดต้นทุนรวม
+                ไม่ได้ลดจำนวนสลับก่อนเสมอ
+              </p>
+              <p class="note">
+                A* คำนวณระยะทางแบบละกำแพงจาก G และพัสดุแต่ละชิ้น โดยคงพอร์ทัลไว้
+                ใช้ h = ค่าสูงสุดระหว่างระยะไป G และระยะไปพัสดุที่ยังไม่เก็บ +
+                ระยะจากพัสดุนั้นไป G เป็นขอบเขตล่างของต้นทุนเก็บครบ
+                จึงไม่ประเมินเกินจริง เวลารวมการเตรียมตารางเหล่านี้ H states
+                นับรายการระยะทางทุกตารางรวมกัน
+              </p>
+              <p class="note">
+                Expanded นับ state ที่นำออกจากคิวเพื่อประมวลผล รวมเป้าหมาย ใช้
+                gScore ตัดทางที่ไม่ดีขึ้นและ cameFrom สร้างคำตอบย้อนหลัง หาก
+                Cost เสมอกัน เส้นทางอาจต่างกันได้ A* ไม่จำเป็นต้องเร็วหรือใช้
+                frontier น้อยกว่าเสมอ
+              </p>
+            </details>
+          </section>
+        </div>
+      </div>
+      <footer>
+        QUANTUM COURIER / ออกแบบ → ทดลอง → เปรียบเทียบ •
+        ใช้งานออฟไลน์ได้ในไฟล์เดียว
+      </footer>
+    </main>
+    <script>
+      "use strict";
+      // Search engine: no DOM dependencies. Portals are paired, optional edges.
+      class MinHeap {
+        constructor() {
+          this.a = [];
+          this.seq = 0;
+        }
+        less(a, b) {
+          return a.f < b.f || (a.f === b.f && a.seq < b.seq);
+        }
+        push(n) {
+          n.seq = this.seq++;
+          let i = this.a.push(n) - 1;
+          while (i) {
+            let p = (i - 1) >> 1;
+            if (!this.less(n, this.a[p])) break;
+            this.a[i] = this.a[p];
+            i = p;
+          }
+          this.a[i] = n;
+        }
+        pop() {
+          const first = this.a[0],
+            last = this.a.pop();
+          if (this.a.length) {
+            let i = 0;
+            while (i * 2 + 1 < this.a.length) {
+              let c = i * 2 + 1;
+              if (c + 1 < this.a.length && this.less(this.a[c + 1], this.a[c]))
+                c++;
+              if (!this.less(this.a[c], last)) break;
+              this.a[i] = this.a[c];
+              i = c;
+            }
+            this.a[i] = last;
+          }
+          return first;
+        }
+        get size() {
+          return this.a.length;
+        }
+      }
+      const key = (s) => `${s.z},${s.r},${s.c}`,
+        same = (a, b) => a && b && key(a) === key(b),
+        dist = (a, b) => Math.abs(a.r - b.r) + Math.abs(a.c - b.c);
+      function blank(rows = 8, cols = 8) {
+        return {
+          version: 5,
+          parcels: [],
+          dimensionIds: [0, 1],
+          nextDimensionId: 2,
+          sizes: { 0: { rows, cols }, 1: { rows, cols } },
+          walls: Object.fromEntries(
+            [0, 1].map((id) => [
+              id,
+              Array.from({ length: rows }, () => Array(cols).fill(false)),
+            ]),
+          ),
+          portals: [],
+          start: { z: 0, r: 0, c: 0 },
+          goal: { z: 0, r: rows - 1, c: cols - 1 },
+          moveCost: 1,
+          switchCost: 4,
+        };
+      }
+      function validate(m) {
+        if (!m || m.version !== 5)
+          throw Error("รูปแบบไฟล์หรือ version ไม่รองรับ");
+        if (
+          !Array.isArray(m.dimensionIds) ||
+          m.dimensionIds.length < 1 ||
+          m.dimensionIds.length > 6 ||
+          m.dimensionIds.some((id) => !Number.isSafeInteger(id) || id < 0) ||
+          new Set(m.dimensionIds).size !== m.dimensionIds.length ||
+          !Number.isSafeInteger(m.nextDimensionId) ||
+          m.nextDimensionId <= Math.max(...m.dimensionIds)
+        )
+          throw Error("ข้อมูลมิติไม่ถูกต้อง (1–6 มิติ)");
+        if (
+          !m.sizes ||
+          Array.isArray(m.sizes) ||
+          Object.keys(m.sizes).length !== m.dimensionIds.length ||
+          m.dimensionIds.some(
+            (id) =>
+              !m.sizes[id] || !validSize(m.sizes[id].rows, m.sizes[id].cols),
+          )
+        )
+          throw Error("ขนาดแต่ละมิติต้องเป็นจำนวนเต็ม 4–20");
+        if (
+          !m.walls ||
+          Array.isArray(m.walls) ||
+          Object.keys(m.walls).length !== m.dimensionIds.length ||
+          m.dimensionIds.some(
+            (id) =>
+              !Array.isArray(m.walls[id]) ||
+              m.walls[id].length !== m.sizes[id].rows ||
+              m.walls[id].some(
+                (row) =>
+                  !Array.isArray(row) ||
+                  row.length !== m.sizes[id].cols ||
+                  row.some((v) => typeof v !== "boolean"),
+              ),
+          )
+        )
+          throw Error("ข้อมูลกำแพงไม่ถูกต้อง");
+        const point = (p) =>
+          p &&
+          m.dimensionIds.includes(p.z) &&
+          Number.isInteger(p.r) &&
+          Number.isInteger(p.c) &&
+          p.r >= 0 &&
+          p.r < m.sizes[p.z].rows &&
+          p.c >= 0 &&
+          p.c < m.sizes[p.z].cols;
+        for (const n of ["start", "goal"]) {
+          const p = m[n];
+          if (
+            !point(p) ||
+            !m.dimensionIds.includes(p.z) ||
+            m.walls[p.z][p.r][p.c]
+          )
+            throw Error("จุดเริ่มต้นและทางออกต้องอยู่บนช่องเดินได้");
+        }
+        if (same(m.start, m.goal))
+          throw Error("จุดเริ่มต้นและทางออกต้องเป็นคนละ state");
+        const endpoint = (p) =>
+          point(p) && m.dimensionIds.includes(p.z) && !m.walls[p.z][p.r][p.c];
+        if (
+          !Array.isArray(m.portals) ||
+          m.portals.length >
+            Math.floor(
+              m.dimensionIds.reduce(
+                (n, id) => n + m.sizes[id].rows * m.sizes[id].cols,
+                0,
+              ) / 2,
+            ) ||
+          m.portals.some(
+            (p) =>
+              !p ||
+              !Number.isInteger(p.id) ||
+              p.id < 1 ||
+              !endpoint(p.a) ||
+              !endpoint(p.b) ||
+              same(p.a, p.b),
+          )
+        )
+          throw Error("ข้อมูลคู่พอร์ทัลไม่ถูกต้องหรือปลายทางเป็นกำแพง");
+        if (
+          new Set(m.portals.map((p) => p.id)).size !== m.portals.length ||
+          new Set(m.portals.flatMap((p) => [key(p.a), key(p.b)])).size !==
+            m.portals.length * 2
+        )
+          throw Error("รหัสหรือปลายพอร์ทัลซ้ำ");
+        if (
+          !Array.isArray(m.parcels) ||
+          m.parcels.length > 6 ||
+          m.parcels.some((p) => !endpoint(p)) ||
+          new Set(m.parcels.map(key)).size !== m.parcels.length
+        )
+          throw Error("พัสดุต้องอยู่บนทางเดิน ไม่ซ้ำช่อง และไม่เกิน 6 ชิ้น");
+        for (const n of ["moveCost", "switchCost"])
+          if (!Number.isInteger(m[n]) || m[n] < 1 || m[n] > 100)
+            throw Error("ต้นทุนต้องเป็นจำนวนเต็ม 1–100");
+        return m;
+      }
+      // Version 1 maps used aligned cross-dimension portals. Preserve them on import.
+      function normalize(m) {
+        if (m?.version === 1 && Array.isArray(m.portals)) {
+          m = {
+            ...m,
+            version: 2,
+            portals: m.portals.map((p, i) => ({
+              id: i + 1,
+              a: { ...p, z: 0 },
+              b: { ...p, z: 1 },
+            })),
+          };
+        }
+        if (m?.version === 2 && Array.isArray(m.walls) && m.walls.length === 2)
+          m = {
+            ...m,
+            version: 3,
+            dimensionIds: [0, 1],
+            nextDimensionId: 2,
+            walls: { 0: m.walls[0], 1: m.walls[1] },
+          };
+        if (m?.version === 3 && Array.isArray(m.dimensionIds)) {
+          const { rows, cols, ...rest } = m;
+          m = {
+            ...rest,
+            version: 4,
+            sizes: Object.fromEntries(
+              m.dimensionIds.map((id) => [id, { rows, cols }]),
+            ),
+          };
+        }
+        if (m?.version === 4) m = { ...m, version: 5, parcels: [] };
+        return validate(m);
+      }
+      function validSize(rows, cols) {
+        return (
+          Number.isInteger(rows) &&
+          Number.isInteger(cols) &&
+          rows >= 4 &&
+          rows <= 20 &&
+          cols >= 4 &&
+          cols <= 20
+        );
+      }
+      function portalLinks(m) {
+        const links = new Map();
+        for (const p of m.portals) {
+          links.set(key(p.a), { ...p.b, portalId: p.id });
+          links.set(key(p.b), { ...p.a, portalId: p.id });
+        }
+        return links;
+      }
+      function neighbors(m, s, links, relaxed = false) {
+        const next = [];
+        for (const [dr, dc] of [
+          [-1, 0],
+          [1, 0],
+          [0, -1],
+          [0, 1],
+        ]) {
+          const r = s.r + dr,
+            c = s.c + dc;
+          if (
+            r >= 0 &&
+            r < m.sizes[s.z].rows &&
+            c >= 0 &&
+            c < m.sizes[s.z].cols &&
+            (relaxed || !m.walls[s.z][r][c])
+          )
+            next.push({ z: s.z, r, c, cost: m.moveCost, action: "walk" });
+        }
+        const target = links.get(key(s));
+        if (target)
+          next.push({ ...target, cost: m.switchCost, action: "warp" });
+        return next;
+      }
+      // Exact distance in a relaxed graph: remove walls, retain all paired edges.
+      // Every edge is bidirectional, so Dijkstra from the goal gives distances to it.
+      function relaxedDistances(m, links, target = m.goal) {
+        const distances = new Map([[key(target), 0]]),
+          q = new MinHeap();
+        let peak = 1,
+          maxMemory = links.size + 2,
+          expanded = 0;
+        q.push({ ...target, g: 0, f: 0 });
+        while (q.size) {
+          const s = q.pop();
+          if (s.g !== distances.get(key(s))) continue;
+          expanded++;
+          for (const n of neighbors(m, s, links, true)) {
+            const g = s.g + n.cost;
+            if (g >= (distances.get(key(n)) ?? Infinity)) continue;
+            distances.set(key(n), g);
+            q.push({ ...n, g, f: g });
+          }
+          peak = Math.max(peak, q.size);
+          maxMemory = Math.max(maxMemory, links.size + q.size + distances.size);
+        }
+        return { distances, peak, expanded, maxMemory };
+      }
+      const stateKey = (s) => `${key(s)}|${s.mask}`;
+      const bitCount = (n) => {
+        let c = 0;
+        while (n) {
+          n &= n - 1;
+          c++;
+        }
+        return c;
+      };
+      function* searchSteps(m, algorithm, trace = true) {
+        const startTime = performance.now();
+        let suspended = 0;
+        const links = portalLinks(m),
+          parcelIndex = new Map(m.parcels.map((p, i) => [key(p), 1 << i])),
+          fullMask = (1 << m.parcels.length) - 1;
+        const collect = (s, mask) => mask | (parcelIndex.get(key(s)) ?? 0);
+        let prepExpanded = 0,
+          prepPeak = 0,
+          heuristicStates = 0,
+          maxMemory = links.size + parcelIndex.size;
+        const tables = [];
+        if (algorithm === "ASTAR")
+          for (const target of [m.goal, ...m.parcels]) {
+            const prep = relaxedDistances(m, links, target);
+            maxMemory = Math.max(
+              maxMemory,
+              parcelIndex.size + heuristicStates + prep.maxMemory,
+            );
+            prepExpanded += prep.expanded;
+            prepPeak = Math.max(prepPeak, prep.peak);
+            tables.push(prep.distances);
+            heuristicStates += prep.distances.size;
+            const t = performance.now();
+            yield;
+            suspended += performance.now() - t;
+          }
+        // Any completion must reach the goal, and each uncollected parcel then the goal.
+        // Relaxed distances give lower bounds; their maximum remains admissible/consistent.
+        const h = (s) => {
+          if (algorithm === "UCS") return 0;
+          const goalDistance = tables[0].get(key(s));
+          if (goalDistance === undefined) return 0;
+          let bound = goalDistance;
+          for (let i = 0; i < m.parcels.length; i++)
+            if (!(s.mask & (1 << i))) {
+              const first = tables[i + 1].get(key(s)),
+                last = tables[0].get(key(m.parcels[i]));
+              if (first !== undefined && last !== undefined)
+                bound = Math.max(bound, first + last);
+            }
+          return bound;
+        };
+        const start = { ...m.start, mask: collect(m.start, 0) },
+          heap = new MinHeap(),
+          g = new Map([[stateKey(start), 0]]),
+          parent = new Map(),
+          events = [];
+        heap.push({ ...start, g: 0, f: h(start) });
+        const fixed = links.size + parcelIndex.size + heuristicStates;
+        maxMemory = Math.max(maxMemory, fixed + 2);
+        let expanded = 0,
+          peak = 1,
+          found = null,
+          popped = 0;
+        while (heap.size) {
+          if (++popped % 512 === 0) {
+            const t = performance.now();
+            yield;
+            suspended += performance.now() - t;
+          }
+          const cur = heap.pop(),
+            k = stateKey(cur);
+          if (cur.g !== g.get(k)) continue;
+          expanded++;
+          const added = [];
+          if (same(cur, m.goal) && cur.mask === fullMask) {
+            found = cur;
+            if (trace) events.push({ cur, added });
+            break;
+          }
+          for (const n of neighbors(m, cur, links)) {
+            const mask = collect(n, cur.mask),
+              nk = stateKey({ ...n, mask }),
+              ng = cur.g + n.cost;
+            if (ng >= (g.get(nk) ?? Infinity)) continue;
+            g.set(nk, ng);
+            parent.set(nk, {
+              state: cur,
+              action: n.action,
+              portalId: n.portalId,
+            });
+            const entry = {
+              z: n.z,
+              r: n.r,
+              c: n.c,
+              mask,
+              g: ng,
+              f: ng + h({ ...n, mask }),
+            };
+            heap.push(entry);
+            if (trace) added.push(entry);
+          }
+          peak = Math.max(peak, heap.size);
+          maxMemory = Math.max(
+            maxMemory,
+            fixed + heap.size + g.size + parent.size,
+          );
+          if (trace) events.push({ cur, added });
+        }
+        const path = [];
+        for (let n = found; n;) {
+          const edge = parent.get(stateKey(n));
+          path.push({
+            z: n.z,
+            r: n.r,
+            c: n.c,
+            mask: n.mask,
+            action: edge?.action ?? "start",
+            portalId: edge?.portalId,
+          });
+          n = edge?.state;
+        }
+        path.reverse();
+        const warps = path.filter((p) => p.action === "warp").length;
+        let switches = 0;
+        for (let i = 1; i < path.length; i++)
+          if (path[i].z !== path[i - 1].z) switches++;
+        return {
+          algorithm,
+          cost: found?.g ?? null,
+          path,
+          warps,
+          switches,
+          moves: path.length ? path.length - 1 - warps : 0,
+          expanded,
+          peak,
+          maxMemory,
+          prepExpanded,
+          prepPeak,
+          heuristicStates,
+          events,
+          parcelCount: m.parcels.length,
+          collected: found ? bitCount(found.mask) : null,
+          ms: performance.now() - startTime - suspended,
+        };
+      }
+      function search(m, algorithm, trace = true) {
+        const iterator = searchSteps(m, algorithm, trace);
+        let step;
+        do {
+          step = iterator.next();
+        } while (!step.done);
+        return step.value;
+      }
+      async function searchResponsive(m, algorithm, trace) {
+        const iterator = searchSteps(m, algorithm, trace);
+        while (true) {
+          if (cancelSearch)
+            throw Error("หยุดค้นหาแล้ว • ปรับด่านหรือเริ่มใหม่ได้");
+          const step = iterator.next();
+          if (step.done) return step.value;
+          await pause();
+        }
+      }
+      function preset(name) {
+        let m = blank();
+        if (name === "collect") {
+          m.portals = [
+            { id: 1, a: { z: 0, r: 1, c: 2 }, b: { z: 1, r: 2, c: 1 } },
+            { id: 2, a: { z: 1, r: 6, c: 5 }, b: { z: 0, r: 6, c: 6 } },
+          ];
+          m.parcels = [
+            { z: 0, r: 0, c: 5 },
+            { z: 1, r: 4, c: 3 },
+            { z: 0, r: 7, c: 1 },
+          ];
+        }
+        if (name === "roundtrip") {
+          for (let r = 0; r < 8; r++) m.walls[0][r][3] = true;
+          m.portals = [
+            { id: 1, a: { z: 0, r: 2, c: 1 }, b: { z: 1, r: 1, c: 2 } },
+            { id: 2, a: { z: 1, r: 5, c: 5 }, b: { z: 0, r: 5, c: 6 } },
+          ];
+        }
+        if (name === "cross") {
+          m.goal.z = 1;
+          m.portals = [
+            { id: 1, a: { z: 0, r: 1, c: 2 }, b: { z: 1, r: 6, c: 5 } },
+          ];
+          for (let c = 1; c < 7; c++) m.walls[1][3][c] = true;
+        }
+        if (name === "local")
+          m.portals = [
+            { id: 1, a: { z: 0, r: 0, c: 1 }, b: { z: 0, r: 7, c: 6 } },
+          ];
+        if (name === "blocked") {
+          m.walls[0][6][7] = true;
+          m.walls[0][7][6] = true;
+        }
+        return m;
+      }
+      const $ = (id) => document.getElementById(id),
+        clone = (o) => JSON.parse(JSON.stringify(o));
+      let model = preset("collect"),
+        viewLeft = 0,
+        viewRight = 1,
+        pendingPortal = null,
+        brush = "wall",
+        history = [],
+        results = {},
+        cancelSearch = false,
+        busy = false,
+        drawing = false,
+        stroke = false,
+        painted = new Set(),
+        timer = null,
+        frames = [],
+        cursor = 0,
+        selected = "UCS";
+      try {
+        const saved = localStorage.getItem("quantum-courier-v1");
+        if (saved) model = normalize(JSON.parse(saved));
+      } catch {}
+      function message(s) {
+        $("status").textContent = s;
+      }
+      function persist() {
+        try {
+          localStorage.setItem("quantum-courier-v1", JSON.stringify(model));
+        } catch {}
+      }
+      function stop() {
+        clearTimeout(timer);
+        timer = null;
+        $("play").textContent = "▶ เล่น";
+      }
+      function resetResults() {
+        stop();
+        results = {};
+        frames = [];
+        cursor = 0;
+        $("progress").textContent = "0 / 0";
+        $("inspect").textContent = "เลือกค้นหาเพื่อดูค่า g, h และ f";
+        renderResults();
+        render();
+        updateControls();
+      }
+      function remember() {
+        history.push(clone(model));
+        if (history.length > 40) history.shift();
+      }
+      function sync() {
+        for (const n of ["moveCost", "switchCost"]) $(n).value = model[n];
+        $("dimensions").textContent =
+          `${model.dimensionIds.length} มิติ · ${model.dimensionIds.reduce((n, id) => n + model.sizes[id].rows * model.sizes[id].cols, 0)} ช่องรวม`;
+        persist();
+        updateControls();
+      }
+      function cell(s) {
+        return $(`c-${s.z}-${s.r}-${s.c}`);
+      }
+      function dimensionName(z) {
+        return z < 26 ? String.fromCharCode(65 + z) : `D${z + 1}`;
+      }
+      function syncResizeInputs() {
+        const size = model.sizes[Number($("deleteDimensionSelect").value)];
+        if (size) {
+          $("resizeRows").value = size.rows;
+          $("resizeCols").value = size.cols;
+        }
+      }
+      $("deleteDimensionSelect").onchange = syncResizeInputs;
+      function syncViews() {
+        if (!model.dimensionIds.includes(viewLeft))
+          viewLeft = model.dimensionIds[0];
+        if (!model.dimensionIds.includes(viewRight))
+          viewRight =
+            model.dimensionIds.find((id) => id !== viewLeft) ?? viewLeft;
+        for (const [id, value] of [
+          ["viewLeft", viewLeft],
+          ["viewRight", viewRight],
+          ["deleteDimensionSelect", Number($("deleteDimensionSelect").value)],
+        ]) {
+          const select = $(id);
+          select.replaceChildren();
+          for (const z of model.dimensionIds) {
+            const o = document.createElement("option");
+            o.value = z;
+            o.textContent = `Dimension ${dimensionName(z)} (${model.sizes[z].rows}×${model.sizes[z].cols})`;
+            select.append(o);
+          }
+          select.value = model.dimensionIds.includes(value)
+            ? value
+            : model.dimensionIds[0];
+        }
+        syncResizeInputs();
+        showViews();
+      }
+      function showViews() {
+        for (const z of model.dimensionIds) {
+          const el = $("map" + z);
+          if (el) el.hidden = z !== viewLeft && z !== viewRight;
+        }
+      }
+      function reveal(z) {
+        if (z !== viewLeft && z !== viewRight) {
+          viewRight = z;
+          $("viewRight").value = z;
+          showViews();
+        }
+      }
+      for (const id of ["viewLeft", "viewRight"])
+        $(id).onchange = () => {
+          if (id === "viewLeft") viewLeft = Number($(id).value);
+          else viewRight = Number($(id).value);
+          showViews();
+        };
+      function parcelState(mask = 0) {
+        for (let i = 0; i < model.parcels.length; i++)
+          cell(model.parcels[i])?.classList.toggle(
+            "collected",
+            !!(mask & (1 << i)),
+          );
+        $("parcelProgress").textContent =
+          `พัสดุใน state ที่แสดง: ${bitCount(mask)} / ${model.parcels.length}`;
+      }
+      function render() {
+        $("maps").replaceChildren();
+        for (const z of model.dimensionIds) {
+          const panel = document.createElement("div");
+          panel.className = "map";
+          panel.id = "map" + z;
+          const title = document.createElement("div");
+          title.className = "map-title";
+          const strong = document.createElement("strong");
+          strong.textContent = `◈ DIMENSION ${dimensionName(z)} · ${model.sizes[z].rows}×${model.sizes[z].cols}`;
+          title.append(strong);
+          const grid = document.createElement("div");
+          grid.className = "grid";
+          grid.id = "grid" + z;
+          grid.setAttribute("aria-label", `แผนที่มิติ ${dimensionName(z)}`);
+          panel.append(title, grid);
+          $("maps").append(panel);
+          grid.style.gridTemplateColumns = `repeat(${model.sizes[z].cols},minmax(0,1fr))`;
+          grid.replaceChildren();
+          for (let r = 0; r < model.sizes[z].rows; r++)
+            for (let c = 0; c < model.sizes[z].cols; c++) {
+              const s = { z, r, c },
+                p = model.portals.find((p) => same(p.a, s) || same(p.b, s)),
+                b = document.createElement("button");
+              b.id = `c-${z}-${r}-${c}`;
+              b.className =
+                "cell" +
+                (model.walls[z][r][c] ? " wall" : "") +
+                (p ? " portal" : "") +
+                (same(s, model.start) ? " start" : "") +
+                (same(s, model.goal) ? " goal" : "");
+              b.textContent = same(s, model.start)
+                ? "S"
+                : same(s, model.goal)
+                  ? "G"
+                  : p
+                    ? `P${p.id}`
+                    : model.walls[z][r][c]
+                      ? "▧"
+                      : "";
+              if (p) {
+                b.style.setProperty(
+                  "--portal-color",
+                  `hsl(${(p.id * 137.5) % 360} 75% 72%)`,
+                );
+                b.dataset.portal = `P${p.id}`;
+                const other = same(p.a, s) ? p.b : p.a;
+                b.title = `P${p.id} ↔ ${dimensionName(other.z)} (${other.r + 1}, ${other.c + 1})`;
+              }
+              if (same(s, pendingPortal)) b.classList.add("pending");
+              const parcel = model.parcels.findIndex((p) => same(p, s));
+              if (parcel >= 0) {
+                b.classList.add("parcel");
+                b.dataset.parcel = `📦${parcel + 1}`;
+                b.title += (b.title ? " · " : "") + `พัสดุ ${parcel + 1}`;
+              }
+              b.dataset.z = z;
+              b.dataset.r = r;
+              b.dataset.c = c;
+              b.setAttribute(
+                "aria-label",
+                `${dimensionName(z)} แถว ${r + 1} คอลัมน์ ${c + 1} ${b.textContent || "ทางเดิน"}${p ? " พอร์ทัล" : ""}`,
+              );
+              b.addEventListener("keydown", (e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  if (busy) return;
+                  stroke = false;
+                  painted.clear();
+                  paint(s);
+                  stroke = false;
+                }
+              });
+              grid.append(b);
+            }
+        }
+        syncViews();
+        parcelState();
+      }
+      function paint(s) {
+        if (busy || painted.has(key(s))) return;
+        painted.add(key(s));
+        if (brush === "portal") {
+          if (model.portals.some((p) => same(p.a, s) || same(p.b, s))) {
+            message("ช่องนี้มีพอร์ทัลแล้ว • เลือกช่องอื่น");
+            return;
+          }
+          if (!pendingPortal) {
+            pendingPortal = { ...s };
+            resetResults();
+            message(
+              `เลือกปลายแรก ${dimensionName(s.z)} (${s.r + 1}, ${s.c + 1}) แล้ว • คลิกปลายที่สอง หรือกด Escape`,
+            );
+            return;
+          }
+          if (same(s, pendingPortal)) {
+            message("ปลายทั้งสองต้องเป็นคนละช่อง • เลือกใหม่ หรือกด Escape");
+            return;
+          }
+          remember();
+          const id = Math.max(0, ...model.portals.map((p) => p.id)) + 1;
+          model.portals.push({ id, a: { ...pendingPortal }, b: { ...s } });
+          for (const point of [pendingPortal, s])
+            model.walls[point.z][point.r][point.c] = false;
+          pendingPortal = null;
+          resetResults();
+          sync();
+          message(`สร้าง P${id} แล้ว • วางคู่ต่อไปได้`);
+          return;
+        }
+        if (
+          (brush === "wall" && (same(s, model.start) || same(s, model.goal))) ||
+          (brush === "start" && same(s, model.goal)) ||
+          (brush === "goal" && same(s, model.start))
+        ) {
+          message("ช่องนี้มีจุดเริ่มต้นหรือทางออกอยู่ กรุณาย้ายจุดนั้นก่อน");
+          return;
+        }
+        if (brush === "parcel") {
+          if (model.parcels.some((p) => same(p, s))) return;
+          if (model.parcels.length >= 6) {
+            message(
+              "วางได้สูงสุด 6 ชิ้น เพราะจำนวน state เพิ่มขึ้นตามชุดพัสดุ",
+            );
+            return;
+          }
+        }
+        if (!stroke) {
+          remember();
+          stroke = true;
+        }
+        if (brush === "parcel") {
+          model.parcels.push({ ...s });
+          model.walls[s.z][s.r][s.c] = false;
+        }
+        if (brush === "wall" || brush === "erase") {
+          model.parcels = model.parcels.filter((p) => !same(p, s));
+          model.walls[s.z][s.r][s.c] = brush === "wall";
+          model.portals = model.portals.filter(
+            (p) => !same(p.a, s) && !same(p.b, s),
+          );
+        }
+        if (brush === "start" || brush === "goal") {
+          model[brush] = { ...s };
+          model.walls[s.z][s.r][s.c] = false;
+        }
+        resetResults();
+        sync();
+        message("แก้ไขด่านแล้ว • เลือกวิธีค้นหาเพื่อทดลอง");
+      }
+      document.addEventListener("pointerdown", (e) => {
+        const b = e.target.closest(".cell");
+        if (!b || e.button !== 0 || busy) return;
+        e.preventDefault();
+        drawing = true;
+        stroke = false;
+        painted.clear();
+        paint({ z: +b.dataset.z, r: +b.dataset.r, c: +b.dataset.c });
+      });
+      document.addEventListener("pointermove", (e) => {
+        if (!drawing || brush === "portal") return;
+        const b = document
+          .elementFromPoint(e.clientX, e.clientY)
+          ?.closest(".cell");
+        if (b) paint({ z: +b.dataset.z, r: +b.dataset.r, c: +b.dataset.c });
+      });
+      for (const event of ["pointerup", "pointercancel"])
+        document.addEventListener(event, () => {
+          drawing = false;
+          stroke = false;
+        });
+      window.addEventListener("blur", () => {
+        drawing = false;
+        stroke = false;
+        stop();
+      });
+      $("tools").addEventListener("click", (e) => {
+        const b = e.target.closest("[data-tool]");
+        if (!b) return;
+        cancelPortal();
+        brush = b.dataset.tool;
+        document
+          .querySelectorAll("[data-tool]")
+          .forEach((el) => el.classList.toggle("active", el === b));
+      });
+      function cancelPortal() {
+        if (!pendingPortal) return;
+        pendingPortal = null;
+        render();
+        updateControls();
+        message("ยกเลิกการวางพอร์ทัลแล้ว");
+      }
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") cancelPortal();
+      });
+      $("cancelPortal").onclick = cancelPortal;
+      $("stopSearch").onclick = () => {
+        cancelSearch = true;
+      };
+      function updateControls() {
+        $("stopSearch").disabled = !busy;
+        for (const id of [
+          "ucs",
+          "astar",
+          "compare",
+          "newMap",
+          "loadPreset",
+          "load",
+          "moveCost",
+          "switchCost",
+          "rows",
+          "cols",
+          "preset",
+          "clear",
+          "save",
+        ])
+          $(id).disabled = busy;
+        $("addDimension").disabled = busy || model.dimensionIds.length >= 6;
+        $("deleteDimension").disabled = busy || model.dimensionIds.length <= 1;
+        $("deleteDimensionSelect").disabled = busy;
+        for (const id of [
+          "dimensionRows",
+          "dimensionCols",
+          "resizeRows",
+          "resizeCols",
+          "resizeDimension",
+        ])
+          $(id).disabled = busy;
+        $("undo").disabled = busy || !history.length;
+        for (const id of ["ucs", "astar", "compare", "save"])
+          $(id).disabled = busy || !!pendingPortal;
+        $("cancelPortal").disabled = !pendingPortal;
+        for (const id of ["play", "step", "end"])
+          $(id).disabled = busy || !results[selected];
+        $("replay").disabled = busy || !Object.keys(results).length;
+        for (const option of $("replay").options)
+          option.disabled = !results[option.value];
+        $("csv").disabled = busy || !Object.keys(results).length;
+      }
+      function renderResults() {
+        $("results").replaceChildren();
+        if (!Object.keys(results).length) {
+          const tr = document.createElement("tr"),
+            td = document.createElement("td");
+          td.colSpan = 14;
+          td.textContent = "ยังไม่มีผลการค้นหา";
+          tr.append(td);
+          $("results").append(tr);
+          return;
+        }
+        for (const a of ["UCS", "ASTAR"]) {
+          const r = results[a];
+          if (!r) continue;
+          const tr = document.createElement("tr");
+          for (const v of [
+            a === "ASTAR" ? "A*" : "UCS",
+            r.cost === null ? "ไม่พบทาง" : "พบทาง",
+            r.collected === null
+              ? `—/${r.parcelCount}`
+              : `${r.collected}/${r.parcelCount}`,
+            r.cost ?? "—",
+            r.cost === null ? "—" : r.moves,
+            r.cost === null ? "—" : r.warps,
+            r.cost === null ? "—" : r.switches,
+            r.expanded,
+            r.maxMemory,
+            r.peak,
+            r.prepExpanded,
+            r.prepPeak,
+            r.heuristicStates,
+            r.ms.toFixed(3),
+          ]) {
+            const td = document.createElement("td");
+            td.textContent = v;
+            tr.append(td);
+          }
+          $("results").append(tr);
+        }
+      }
+      const pause = () => new Promise((resolve) => setTimeout(resolve, 0));
+      async function run(types) {
+        if (busy) return;
+        try {
+          if (pendingPortal) throw Error("วางปลายที่สองหรือยกเลิกก่อนค้นหา");
+          validate(model);
+          stop();
+          busy = true;
+          cancelSearch = false;
+          updateControls();
+          message("กำลังเปรียบเทียบการค้นหา…");
+          await pause();
+          const snapshot = clone(model);
+          const completed = {};
+          for (const type of types) {
+            const rounds = snapshot.parcels.length ? 3 : 15;
+            message(
+              `กำลังค้นหา ${type === "ASTAR" ? "A*" : type} • พัสดุ ${snapshot.parcels.length} ชิ้น`,
+            );
+            await searchResponsive(snapshot, type, false);
+            const times = [];
+            for (let i = 0; i < rounds; i++) {
+              times.push((await searchResponsive(snapshot, type, false)).ms);
+              await pause();
+            }
+            const result = await searchResponsive(snapshot, type, true);
+            times.sort((a, b) => a - b);
+            result.ms = times[Math.floor(rounds / 2)];
+            result.rounds = rounds;
+            completed[type] = result;
+          }
+          Object.assign(results, completed);
+          renderResults();
+          selectReplay(types[types.length - 1]);
+          const a = results.UCS,
+            b = results.ASTAR;
+          if (a && b)
+            message(
+              a.cost === b.cost
+                ? a.cost === null
+                  ? "ทั้งสองวิธีไม่พบเส้นทางที่เก็บพัสดุครบแล้วถึงทางออก"
+                  : `ต้นทุนตรงกัน: ${a.cost} • เลือก UCS / A* เพื่อดูการค้นหา`
+                : "ผลต้นทุนไม่ตรงกัน กรุณาตรวจสอบด่าน",
+            );
+          else
+            message(
+              results[selected].cost === null
+                ? "ไม่พบเส้นทางที่เก็บครบแล้วถึงทางออก • ตรวจพัสดุที่ถูกปิดล้อม"
+                : "พบเส้นทางแล้ว • กดเล่นหรือดูคำตอบ",
+            );
+        } catch (e) {
+          message(e.message);
+        } finally {
+          busy = false;
+          updateControls();
+        }
+      }
+      function selectReplay(type) {
+        stop();
+        selected = type;
+        $("replay").value = type;
+        const result = results[type];
+        frames = result
+          ? [
+              ...result.events.map((e) => ({ kind: "expand", ...e })),
+              ...result.path.map((s, i) => ({ kind: "path", s, i })),
+            ]
+          : [];
+        cursor = 0;
+        render();
+        $("progress").textContent = `0 / ${frames.length}`;
+        $("inspect").textContent =
+          type === "ASTAR" ? "A*: f = g + h" : "UCS: f = g (h = 0)";
+        updateControls();
+      }
+      function advance() {
+        if (cursor >= frames.length) {
+          stop();
+          return;
+        }
+        document
+          .querySelectorAll(".current")
+          .forEach((el) => el.classList.remove("current"));
+        const e = frames[cursor++];
+        reveal((e.cur ?? e.s).z);
+        parcelState((e.cur ?? e.s).mask);
+        if (e.kind === "expand") {
+          for (const n of e.added)
+            if (!cell(n).classList.contains("expanded"))
+              cell(n).classList.add("frontier");
+          const b = cell(e.cur);
+          b.classList.remove("frontier");
+          b.classList.add("expanded", "current");
+          $("inspect").textContent =
+            `${dimensionName(e.cur.z)} (${e.cur.r + 1}, ${e.cur.c + 1}) · เก็บ ${bitCount(e.cur.mask)}/${model.parcels.length} · g=${e.cur.g} · h=${e.cur.f - e.cur.g} · f=${e.cur.f}`;
+        } else {
+          document.querySelectorAll("[data-courier]").forEach((b) => {
+            b.textContent = b.dataset.base;
+            delete b.dataset.courier;
+          });
+          const b = cell(e.s);
+          b.classList.add("path", "current");
+          b.dataset.base = b.textContent;
+          b.dataset.courier = "1";
+          b.textContent = "🚚";
+          $("inspect").textContent =
+            `เส้นทาง ${e.i + 1}/${results[selected].path.length} · ${dimensionName(e.s.z)} (${e.s.r + 1}, ${e.s.c + 1})${e.s.action === "warp" ? ` · วาร์ป P${e.s.portalId}${results[selected].path[e.i - 1].z !== e.s.z ? " ข้ามมิติ" : " ในมิติเดิม"}` : ""}`;
+        }
+        $("progress").textContent = `${cursor} / ${frames.length}`;
+        if (cursor === frames.length) stop();
+      }
+      function tick() {
+        advance();
+        if (cursor < frames.length) {
+          timer = setTimeout(tick, 550 - Number($("speed").value) * 50);
+          $("play").textContent = "Ⅱ หยุดพัก";
+        }
+      }
+      $("play").onclick = () => {
+        if (timer) {
+          stop();
+          return;
+        }
+        if (cursor >= frames.length) selectReplay(selected);
+        tick();
+      };
+      $("step").onclick = () => {
+        stop();
+        advance();
+      };
+      $("end").onclick = () => {
+        stop();
+        if (results[selected]?.path.length)
+          cursor = Math.max(cursor, results[selected].events.length);
+        if (!results[selected]?.path.length)
+          cursor = Math.max(cursor, frames.length - 1);
+        while (cursor < frames.length) advance();
+      };
+      $("replay").onchange = (e) => selectReplay(e.target.value);
+      $("ucs").onclick = () => run(["UCS"]);
+      $("astar").onclick = () => run(["ASTAR"]);
+      $("compare").onclick = () => run(["UCS", "ASTAR"]);
+      $("clear").onclick = () => {
+        pendingPortal = null;
+        resetResults();
+        message("ล้างผลแล้ว • แผนที่ยังคงเดิม");
+      };
+      $("undo").onclick = () => {
+        if (!history.length) return;
+        pendingPortal = null;
+        model = history.pop();
+        resetResults();
+        sync();
+        message("ย้อนการแก้ไขล่าสุดแล้ว");
+      };
+      $("addDimension").onclick = () => {
+        if (busy || model.dimensionIds.length >= 6) return;
+        const rows = Number($("dimensionRows").value),
+          cols = Number($("dimensionCols").value);
+        if (!validSize(rows, cols)) {
+          message("ขนาดมิติใหม่ต้องเป็นจำนวนเต็ม 4–20");
+          return;
+        }
+        remember();
+        pendingPortal = null;
+        const id = model.nextDimensionId++;
+        model.dimensionIds.push(id);
+        model.sizes[id] = { rows, cols };
+        model.walls[id] = Array.from({ length: rows }, () =>
+          Array(cols).fill(false),
+        );
+        viewRight = id;
+        resetResults();
+        sync();
+        message(`เพิ่ม Dimension ${dimensionName(id)} แล้ว`);
+      };
+      $("resizeDimension").onclick = () => {
+        if (busy) return;
+        const id = Number($("deleteDimensionSelect").value),
+          rows = Number($("resizeRows").value),
+          cols = Number($("resizeCols").value);
+        if (!validSize(rows, cols)) {
+          message("ขนาดต้องเป็นจำนวนเต็ม 4–20");
+          return;
+        }
+        const old = model.sizes[id];
+        if (rows === old.rows && cols === old.cols) {
+          message("ขนาดมิตินี้เท่าเดิม");
+          return;
+        }
+        const cut = (p) => p.z === id && (p.r >= rows || p.c >= cols);
+        if (cut(model.start) || cut(model.goal)) {
+          message("ย้าย S/G เข้าขอบเขตใหม่หรือไปมิติอื่นก่อนย่อ");
+          return;
+        }
+        const pairs = model.portals.filter((p) => cut(p.a) || cut(p.b)).length;
+        const parcels = model.parcels.filter(cut).length;
+        let walls = 0;
+        for (let r = 0; r < old.rows; r++)
+          for (let c = 0; c < old.cols; c++)
+            if ((r >= rows || c >= cols) && model.walls[id][r][c]) walls++;
+        if (
+          (rows < old.rows || cols < old.cols) &&
+          !confirm(
+            `ย่อ Dimension ${dimensionName(id)} จาก ${old.rows}×${old.cols} เป็น ${rows}×${cols}? ลบพัสดุ ${parcels} ชิ้น กำแพง ${walls} ช่อง และพอร์ทัล ${pairs} คู่พร้อมปลายอีกฝั่ง (ย้อนกลับได้)`,
+          )
+        )
+          return;
+        remember();
+        pendingPortal = null;
+        model.walls[id] = Array.from({ length: rows }, (_, r) =>
+          Array.from(
+            { length: cols },
+            (_, c) => model.walls[id][r]?.[c] ?? false,
+          ),
+        );
+        model.sizes[id] = { rows, cols };
+        model.portals = model.portals.filter((p) => !cut(p.a) && !cut(p.b));
+        model.parcels = model.parcels.filter((p) => !cut(p));
+        resetResults();
+        sync();
+        message(
+          `ปรับ Dimension ${dimensionName(id)} เป็น ${rows}×${cols} แล้ว`,
+        );
+      };
+      $("deleteDimension").onclick = () => {
+        if (busy || model.dimensionIds.length <= 1) return;
+        const id = Number($("deleteDimensionSelect").value);
+        if (model.start.z === id || model.goal.z === id) {
+          message("ย้ายจุดเริ่มต้นและทางออกไปมิติอื่นก่อนลบ");
+          return;
+        }
+        const count = model.portals.filter(
+          (p) => p.a.z === id || p.b.z === id,
+        ).length;
+        const walls = model.walls[id].flat().filter(Boolean).length;
+        if (
+          !confirm(
+            `ลบ Dimension ${dimensionName(id)} พร้อมพัสดุ ${model.parcels.filter((p) => p.z === id).length} ชิ้น กำแพง ${walls} ช่องและพอร์ทัล ${count} คู่? ปลายอีกฝั่งจะถูกลบด้วย (ย้อนกลับได้)`,
+          )
+        )
+          return;
+        remember();
+        pendingPortal = null;
+        model.dimensionIds = model.dimensionIds.filter((z) => z !== id);
+        delete model.walls[id];
+        delete model.sizes[id];
+        model.parcels = model.parcels.filter((p) => p.z !== id);
+        model.portals = model.portals.filter(
+          (p) => p.a.z !== id && p.b.z !== id,
+        );
+        resetResults();
+        sync();
+        message(`ลบ Dimension ${dimensionName(id)} แล้ว • ย้อนกลับได้`);
+      };
+      function replaceMap(m) {
+        remember();
+        pendingPortal = null;
+        model = validate(m);
+        resetResults();
+        sync();
+        message("โหลดด่านแล้ว • พร้อมค้นหา");
+      }
+      $("loadPreset").onclick = () => {
+        if (confirm("แทนที่ด่านปัจจุบันด้วยด่านตัวอย่าง? (ย้อนกลับได้)"))
+          replaceMap(preset($("preset").value));
+      };
+      $("newMap").onclick = () => {
+        try {
+          const r = +$("rows").value,
+            c = +$("cols").value;
+          if (
+            !Number.isInteger(r) ||
+            !Number.isInteger(c) ||
+            r < 4 ||
+            r > 20 ||
+            c < 4 ||
+            c > 20
+          )
+            throw Error("ขนาดด่านต้องเป็นจำนวนเต็ม 4–20");
+          const m = blank(r, c);
+          validate(m);
+          if (confirm("สร้างด่านว่างแทนด่านปัจจุบัน? (ย้อนกลับได้)"))
+            replaceMap(m);
+        } catch (e) {
+          message(e.message);
+          sync();
+        }
+      };
+      for (const id of ["moveCost", "switchCost"])
+        $(id).onchange = () => {
+          const value = +$(id).value;
+          if (!Number.isInteger(value) || value < 1 || value > 100) {
+            message("ต้นทุนต้องเป็นจำนวนเต็ม 1–100");
+            sync();
+            return;
+          }
+          remember();
+          model[id] = value;
+          resetResults();
+          sync();
+          message("เปลี่ยนต้นทุนแล้ว • ค้นหาใหม่เพื่อเปรียบเทียบ");
+        };
+      function download(name, data, type) {
+        const url = URL.createObjectURL(new Blob([data], { type })),
+          a = document.createElement("a");
+        a.href = url;
+        a.download = name;
+        a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 1000);
+      }
+      $("save").onclick = () =>
+        download(
+          "quantum-courier-map.json",
+          JSON.stringify(model, null, 2),
+          "application/json",
+        );
+      $("load").onclick = () => $("file").click();
+      $("file").onchange = async (e) => {
+        const f = e.target.files[0];
+        if (!f) return;
+        try {
+          if (f.size > 200000) throw Error("ไฟล์ใหญ่เกินไป (สูงสุด 200 KB)");
+          const m = normalize(JSON.parse(await f.text()));
+          if (confirm("แทนที่ด่านปัจจุบันด้วยไฟล์นี้? (ย้อนกลับได้)"))
+            replaceMap(m);
+        } catch (err) {
+          message("โหลดไม่ได้: " + err.message);
+        } finally {
+          e.target.value = "";
+        }
+      };
+      $("csv").onclick = () => {
+        const lines = [
+          "algorithm,status,parcels_collected,parcels_total,cost,moves,warps,dimension_changes,expanded,max_memory_entries,peak_frontier,heuristic_expanded,heuristic_peak_frontier,heuristic_states,median_ms,benchmark_rounds,dimension_sizes,total_cells,dimensions,move_cost,switch_cost",
+        ];
+        for (const r of Object.values(results))
+          lines.push(
+            [
+              r.algorithm,
+              r.cost === null ? "no_path" : "found",
+              r.collected ?? "",
+              r.parcelCount,
+              r.cost ?? "",
+              r.cost === null ? "" : r.moves,
+              r.cost === null ? "" : r.warps,
+              r.cost === null ? "" : r.switches,
+              r.expanded,
+              r.maxMemory,
+              r.peak,
+              r.prepExpanded,
+              r.prepPeak,
+              r.heuristicStates,
+              r.ms.toFixed(6),
+              r.rounds,
+              model.dimensionIds
+                .map(
+                  (id) =>
+                    `${dimensionName(id)}:${model.sizes[id].rows}x${model.sizes[id].cols}`,
+                )
+                .join(";"),
+              model.dimensionIds.reduce(
+                (n, id) => n + model.sizes[id].rows * model.sizes[id].cols,
+                0,
+              ),
+              model.dimensionIds.length,
+              model.moveCost,
+              model.switchCost,
+            ].join(","),
+          );
+        download(
+          "quantum-courier-results.csv",
+          lines.join("\n"),
+          "text/csv;charset=utf-8",
+        );
+      };
+      render();
+      sync();
+      renderResults();
+      window.QuantumCourier = {
+        search,
+        validate,
+        normalize,
+        blank,
+        preset,
+        portalLinks,
+        neighbors,
+        relaxedDistances,
+        stateKey,
+        searchSteps,
+      };
+    </script>
+  </body>
+</html>
