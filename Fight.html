@@ -1,0 +1,763 @@
+<!doctype html>
+<html lang="th">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Quantum Courier Visualizer - Full History Inspector</title>
+    <style>
+        :root {
+            --bg-color: #0b0e14;
+            --card-bg: #151922;
+            --accent-a: #00f3ff;
+            --accent-b: #ff007f;
+            --text-color: #e0e6ed;
+            --wall-color: #343b4d;
+            --portal-color: #bd00ff;
+            --current-color: #ff9f43;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+            user-select: none;
+        }
+
+        h1 {
+            text-align: center;
+            margin: 0 0 5px 0;
+            background: linear-gradient(45deg, var(--accent-a), var(--accent-b));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .layout {
+            display: flex;
+            gap: 20px;
+            max-width: 1400px;
+            margin: 20px auto;
+            justify-content: center;
+        }
+
+        .main-panel {
+            flex: 3;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .side-panel {
+            flex: 1.2;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-width: 320px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #232936;
+        }
+
+        .controls-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .grid-size-selector {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: #1e2430;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.9em;
+        }
+
+        .grid-size-selector select {
+            background: var(--bg-color);
+            color: var(--text-color);
+            border: 1px solid #343b4d;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .brush-btn,
+        .action-btn {
+            padding: 8px 12px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+            background: #232936;
+            color: var(--text-color);
+            transition: 0.2s;
+        }
+
+        .brush-btn.active {
+            border: 1px solid var(--accent-a);
+            box-shadow: 0 0 8px rgba(0, 243, 255, 0.4);
+        }
+
+        .action-btn.run {
+            background: linear-gradient(45deg, #00f3ff, #0072ff);
+            color: #000;
+        }
+
+        .action-btn.random {
+            background: linear-gradient(45deg, #a855f7, #ec4899);
+            color: #fff;
+        }
+
+        .action-btn.pause {
+            background: #ff9f43;
+            color: #000;
+        }
+
+        .action-btn.danger {
+            background: #ff416c;
+            color: #fff;
+        }
+
+        .action-btn:disabled,
+        .brush-btn:disabled,
+        select:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .maps-container {
+            display: flex;
+            gap: 20px;
+        }
+
+        .map-box {
+            background: var(--card-bg);
+            padding: 15px;
+            border-radius: 12px;
+            border: 1px solid #232936;
+        }
+
+        .grid {
+            display: grid;
+            gap: 3px;
+            background: #0b0e14;
+            padding: 5px;
+            border-radius: 8px;
+        }
+
+        .cell {
+            aspect-ratio: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 12px;
+            border-radius: 4px;
+            background-color: #1e2430;
+            cursor: pointer;
+            transition: background-color 0.15s, transform 0.1s;
+        }
+
+        .cell.wall {
+            background-color: var(--wall-color);
+        }
+
+        .cell.portal {
+            background-color: var(--portal-color);
+            box-shadow: 0 0 8px var(--portal-color);
+        }
+
+        .cell.start {
+            background-color: #00e676;
+            color: #000;
+        }
+
+        .cell.goal {
+            background-color: #ffea00;
+            color: #000;
+        }
+
+        .cell.visited {
+            background-color: #2a3547;
+            transform: scale(0.92);
+        }
+
+        .cell.current {
+            background-color: var(--current-color) !important;
+            color: #000;
+            transform: scale(1.15);
+            box-shadow: 0 0 12px var(--current-color);
+            z-index: 5;
+        }
+
+        .cell.inspected {
+            outline: 2px solid var(--accent-a);
+            outline-offset: 1px;
+            z-index: 6;
+        }
+
+        .cell.path {
+            background-color: #ffffff;
+            color: #000;
+            box-shadow: 0 0 10px #fff;
+        }
+
+        .node-inspector {
+            font-family: monospace;
+            font-size: 0.9em;
+            background: #0b0e14;
+            padding: 10px;
+            border-radius: 6px;
+            border-left: 3px solid var(--accent-a);
+            line-height: 1.5;
+        }
+
+        .queue-tracker {
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 0.8em;
+            background: #0b0e14;
+            padding: 8px;
+            border-radius: 6px;
+            word-break: break-all;
+        }
+
+        .metrics-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.9em;
+        }
+
+        .metrics-table th,
+        .metrics-table td {
+            padding: 6px;
+            text-align: left;
+            border-bottom: 1px solid #232936;
+        }
+
+        .speed-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.85em;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>📦 Quantum Courier Visualizer</h1>
+
+    <div class="layout">
+        <div class="main-panel">
+            <div class="card controls-row">
+                <div class="grid-size-selector">
+                    <label>ขนาด Map:</label>
+                    <select id="mapSizeSelect" onchange="changeMapSize(this.value)">
+                        <option value="6" selected>6 x 6</option>
+                        <option value="8">8 x 8</option>
+                        <option value="10">10 x 10</option>
+                        <option value="12">12 x 12</option>
+                    </select>
+                </div>
+
+                <button class="brush-btn active" onclick="setBrush(0, this)">ยางลบ</button>
+                <button class="brush-btn" onclick="setBrush(1, this)" style="color:#ff6b6b">กำแพง</button>
+                <button class="brush-btn" onclick="setBrush(2, this)" style="color:var(--portal-color)">🌀
+                    พอร์ทัล</button>
+                <button class="brush-btn" onclick="setBrush(3, this)" style="color:#00e676">S จุดเริ่ม</button>
+                <button class="brush-btn" onclick="setBrush(4, this)" style="color:#ffea00">G เป้าหมาย</button>
+            </div>
+
+            <div class="controls-row">
+                <button class="action-btn run" id="btn-ucs" onclick="runSearch('UCS')">Run UCS (Blind)</button>
+                <button class="action-btn run" id="btn-astar" onclick="runSearch('ASTAR')">Run A* Search</button>
+                <button class="action-btn pause" id="btn-pause" onclick="togglePause()" disabled>⏸️ Pause</button>
+                <button class="action-btn random" id="btn-random" onclick="generateRandomMap()">🎲 Random Map</button>
+                <button class="action-btn danger" id="btn-clear" onclick="clearPath()">Clear Path</button>
+                <button class="action-btn danger" id="btn-reset" onclick="resetMaps()">Reset Maps</button>
+            </div>
+
+            <div class="maps-container">
+                <div class="map-box">
+                    <div style="color:var(--accent-a); font-weight:bold; margin-bottom:8px; text-align:center;">
+                        Dimension A</div>
+                    <div id="gridA" class="grid"></div>
+                </div>
+                <div class="map-box">
+                    <div style="color:var(--accent-b); font-weight:bold; margin-bottom:8px; text-align:center;">
+                        Dimension B</div>
+                    <div id="gridB" class="grid"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="side-panel">
+            <div class="card">
+                <h4 style="margin:0 0 8px 0;">⏱️ Animation Speed Control</h4>
+                <div class="speed-control">
+                    <span>ช้า (300ms)</span>
+                    <input type="range" id="speedSlider" min="10" max="300" value="100" style="flex:1;" />
+                    <span>เร็ว (10ms)</span>
+                </div>
+            </div>
+
+            <div class="card">
+                <h4 style="margin:0 0 10px 0; color:var(--accent-a);">🔍 Node Inspector (Live / Click)</h4>
+                <div id="inspector" class="node-inspector">
+                    Current State: -<br />
+                    g(n) [Path Cost]: -<br />
+                    h(n) [Heuristic]: -<br />
+                    f(n) = g + h: -<br />
+                    Expanded Step: -
+                </div>
+            </div>
+
+            <div class="card">
+                <h4 style="margin:0 0 10px 0; color:var(--accent-b);">📋 Open List (Priority Queue)</h4>
+                <div id="queueTracker" class="queue-tracker">
+                    [Waiting to run search...]
+                </div>
+            </div>
+
+            <div class="card">
+                <h4 style="margin:0 0 10px 0;">📊 Metrics Comparison</h4>
+                <table class="metrics-table">
+                    <thead>
+                        <tr>
+                            <th>Metric</th>
+                            <th>UCS</th>
+                            <th>A*</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>Cost</td>
+                            <td id="ucs-cost">-</td>
+                            <td id="astar-cost">-</td>
+                        </tr>
+                        <tr>
+                            <td>Nodes Expanded</td>
+                            <td id="ucs-nodes">-</td>
+                            <td id="astar-nodes">-</td>
+                        </tr>
+                        <tr>
+                            <td>Max Memory</td>
+                            <td id="ucs-mem">-</td>
+                            <td id="astar-mem">-</td>
+                        </tr>
+                        <tr>
+                            <td>Runtime</td>
+                            <td id="ucs-time">-</td>
+                            <td id="astar-time">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let ROW = 6, COL = 6;
+        const COST_MOVE = 1, COST_PORTAL = 4;
+        let mapA, mapB;
+        let currentBrush = 0;
+        let isAnimating = false;
+        let isPaused = false;
+
+        let searchHistory = {};
+
+        class PriorityQueue {
+            constructor() { this.values = []; }
+            push(val) {
+                this.values.push(val);
+                this.values.sort((a, b) => a.f - b.f);
+            }
+            shift() { return this.values.shift(); }
+            get length() { return this.values.length; }
+        }
+
+        function toggleControls(animating) {
+            isAnimating = animating;
+            document.getElementById("btn-ucs").disabled = animating;
+            document.getElementById("btn-astar").disabled = animating;
+            document.getElementById("btn-random").disabled = animating;
+            document.getElementById("btn-clear").disabled = animating;
+            document.getElementById("btn-reset").disabled = animating;
+            document.getElementById("mapSizeSelect").disabled = animating;
+            document.querySelectorAll(".brush-btn").forEach(b => b.disabled = animating);
+
+            const pauseBtn = document.getElementById("btn-pause");
+            pauseBtn.disabled = !animating;
+            if (!animating) {
+                isPaused = false;
+                pauseBtn.innerText = "⏸️ Pause";
+            }
+        }
+
+        function togglePause() {
+            if (!isAnimating) return;
+            isPaused = !isPaused;
+            const pauseBtn = document.getElementById("btn-pause");
+            if (isPaused) {
+                pauseBtn.innerText = "▶️ Resume";
+                pauseBtn.style.background = "#00e676";
+            } else {
+                pauseBtn.innerText = "⏸️ Pause";
+                pauseBtn.style.background = "#ff9f43";
+            }
+        }
+
+        function changeMapSize(newSize) {
+            if (isAnimating) return;
+            ROW = parseInt(newSize);
+            COL = parseInt(newSize);
+            resetMaps();
+        }
+
+        function resetMetrics() {
+            searchHistory = {};
+            ["ucs", "astar"].forEach(prefix => {
+                document.getElementById(`${prefix}-cost`).innerText = "-";
+                document.getElementById(`${prefix}-nodes`).innerText = "-";
+                document.getElementById(`${prefix}-mem`).innerText = "-";
+                document.getElementById(`${prefix}-time`).innerText = "-";
+            });
+            document.getElementById("inspector").innerHTML = `
+          Current State: -<br/>
+          g(n) [Path Cost]: -<br/>
+          h(n) [Heuristic]: -<br/>
+          f(n) = g + h: -<br/>
+          Expanded Step: -
+        `;
+            document.getElementById("queueTracker").innerText = "[Waiting to run search...]";
+        }
+
+        function initDefaultMaps() {
+            mapA = Array.from({ length: ROW }, () => Array(COL).fill(0));
+            mapB = Array.from({ length: ROW }, () => Array(COL).fill(0));
+            mapA[0][0] = 3;
+            mapB[ROW - 1][COL - 1] = 4;
+            let midR = Math.floor(ROW / 2), midC = Math.floor(COL / 2);
+            mapA[midR][midC] = 2;
+            mapB[midR][midC] = 2;
+        }
+
+        function generateRandomMap() {
+            if (isAnimating) return;
+            mapA = Array.from({ length: ROW }, () => Array(COL).fill(0));
+            mapB = Array.from({ length: ROW }, () => Array(COL).fill(0));
+
+            let sR = 0, sC = 0;
+            let gR = ROW - 1, gC = COL - 1;
+            mapA[sR][sC] = 3;
+            mapB[gR][gC] = 4;
+
+            let portalCount = Math.max(1, Math.floor(ROW / 3));
+            for (let i = 0; i < portalCount; i++) {
+                let pr = Math.floor(Math.random() * ROW);
+                let pc = Math.floor(Math.random() * COL);
+                if ((pr !== sR || pc !== sC) && (pr !== gR || pc !== gC)) {
+                    mapA[pr][pc] = 2;
+                    mapB[pr][pc] = 2;
+                }
+            }
+
+            for (let r = 0; r < ROW; r++) {
+                for (let c = 0; c < COL; c++) {
+                    if (mapA[r][c] === 0 && Math.random() < 0.2) mapA[r][c] = 1;
+                    if (mapB[r][c] === 0 && Math.random() < 0.2) mapB[r][c] = 1;
+                }
+            }
+
+            resetMetrics();
+            clearPath();
+            drawGrid();
+        }
+
+        function setBrush(type, btn) {
+            if (isAnimating) return;
+            currentBrush = type;
+            document.querySelectorAll('.brush-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+        }
+
+        function applyCellAction(z, r, c) {
+            if (isAnimating) return;
+            applyBrush(z, r, c);
+        }
+
+        function inspectCellHistory(z, r, c) {
+            document.querySelectorAll(".cell").forEach(el => el.classList.remove("inspected"));
+            let domCell = document.getElementById(`cell-${z}-${r}-${c}`);
+            if (domCell) domCell.classList.add("inspected");
+
+            let key = `${z}-${r}-${c}`;
+            let data = searchHistory[key];
+
+            if (data) {
+                document.getElementById("inspector").innerHTML = `
+            Current State: (${data.r}, ${data.c}) Dim:${data.z === 0 ? 'A' : 'B'}<br/>
+            g(n) [Path Cost] = ${data.g}<br/>
+            h(n) [Heuristic] = ${data.h}<br/>
+            f(n) = g + h = ${data.f}<br/>
+            Expanded Step: #${data.step}
+          `;
+                document.getElementById("queueTracker").innerText = data.queueSnapshot || "[Empty Queue]";
+            } else {
+                document.getElementById("inspector").innerHTML = `
+            Current State: (${r}, ${c}) Dim:${z === 0 ? 'A' : 'B'}<br/>
+            <span style="color:#ff6b6b">[Unvisited Node / Wall]</span>
+          `;
+                document.getElementById("queueTracker").innerText = "[Node not expanded]";
+            }
+        }
+
+        function applyBrush(z, r, c) {
+            let targetMap = z === 0 ? mapA : mapB;
+
+            // เช็คว่ากดลงบนช่องเดิมที่มีค่าเดิมอยู่แล้วหรือไม่ ถ้ามีการเปลี่ยนค่าจริงค่อยเคลียร์
+            if (targetMap[r][c] !== currentBrush) {
+                if (currentBrush === 3) removeTile(3);
+                if (currentBrush === 4) removeTile(4);
+                targetMap[r][c] = currentBrush;
+
+                resetMetrics(); // 👈 เคลียร์ Metric Compare & Log Inspector ทันทีที่มีการแก้ไข Map
+                drawGrid();
+            }
+        }
+
+        function removeTile(type) {
+            for (let r = 0; r < ROW; r++) {
+                for (let c = 0; c < COL; c++) {
+                    if (mapA[r][c] === type) mapA[r][c] = 0;
+                    if (mapB[r][c] === type) mapB[r][c] = 0;
+                }
+            }
+        }
+
+        function drawGrid() {
+            renderDOMGrid("gridA", mapA, 0);
+            renderDOMGrid("gridB", mapB, 1);
+        }
+
+        function renderDOMGrid(id, mapData, z) {
+            const container = document.getElementById(id);
+            container.style.gridTemplateColumns = `repeat(${COL}, minmax(20px, 35px))`;
+            container.innerHTML = "";
+            for (let r = 0; r < ROW; r++) {
+                for (let c = 0; c < COL; c++) {
+                    let div = document.createElement("div");
+                    div.id = `cell-${z}-${r}-${c}`;
+                    div.className = "cell " + getCellClass(mapData[r][c]);
+                    if (mapData[r][c] === 3) div.innerText = "S";
+                    if (mapData[r][c] === 4) div.innerText = "G";
+                    if (mapData[r][c] === 2) div.innerText = "🌀";
+
+                    div.onclick = () => {
+                        applyCellAction(z, r, c);
+                        inspectCellHistory(z, r, c);
+                    };
+                    div.onmouseenter = () => {
+                        if (!isAnimating && Object.keys(searchHistory).length > 0) {
+                            inspectCellHistory(z, r, c);
+                        }
+                    };
+                    container.appendChild(div);
+                }
+            }
+        }
+
+        function getCellClass(val) {
+            if (val === 1) return "wall";
+            if (val === 2) return "portal";
+            if (val === 3) return "start";
+            if (val === 4) return "goal";
+            return "empty";
+        }
+
+        function clearPath() {
+            if (isAnimating) return;
+            searchHistory = {};
+            drawGrid();
+        }
+
+        function resetMaps() {
+            if (isAnimating) return;
+            initDefaultMaps();
+            resetMetrics();
+            drawGrid();
+        }
+
+        function findState(type) {
+            for (let r = 0; r < ROW; r++) {
+                for (let c = 0; c < COL; c++) {
+                    if (mapA[r][c] === type) return { r, c, z: 0 };
+                    if (mapB[r][c] === type) return { r, c, z: 1 };
+                }
+            }
+            return null;
+        }
+
+        function getNeighbors(state) {
+            let neighbors = [];
+            let { r, c, z } = state;
+            let currentMap = z === 0 ? mapA : mapB;
+
+            if (currentMap[r][c] === 2) {
+                let nz = z === 0 ? 1 : 0;
+                let nextMap = nz === 0 ? mapA : mapB;
+                if (nextMap[r][c] !== 1) {
+                    neighbors.push({ r, c, z: nz, cost: COST_PORTAL });
+                }
+            }
+
+            const dirs = [[-1, 0], [1, 0], [0, -1], [0, 1]];
+            for (let d of dirs) {
+                let nr = r + d[0], nc = c + d[1];
+                if (nr >= 0 && nr < ROW && nc >= 0 && nc < COL) {
+                    if (currentMap[nr][nc] !== 1) {
+                        neighbors.push({ r: nr, c: nc, z: z, cost: COST_MOVE });
+                    }
+                }
+            }
+            return neighbors;
+        }
+
+        const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+        async function runSearch(type) {
+            if (isAnimating) return;
+            let startState = findState(3), goalState = findState(4);
+            if (!startState || !goalState) return alert("ต้องมีจุดเริ่มต้น (S) และจุดหมาย (G) อย่างละ 1 จุด");
+
+            searchHistory = {};
+            toggleControls(true);
+            drawGrid();
+
+            let heuristic = (r, c, z) => {
+                let manhattanToGoal = Math.abs(r - goalState.r) + Math.abs(c - goalState.c);
+                if (z === goalState.z) return manhattanToGoal;
+                return manhattanToGoal + COST_PORTAL;
+            };
+
+            let t0 = performance.now();
+            let pq = new PriorityQueue();
+            pq.push({
+                r: startState.r, c: startState.c, z: startState.z,
+                g: 0, f: 0,
+                path: [{ r: startState.r, c: startState.c, z: startState.z }]
+            });
+
+            let visited = new Set();
+            let nodesExpanded = 0, maxMemory = 0;
+            let finalNode = null;
+            let lastCurrentDom = null;
+
+            while (pq.length > 0) {
+                while (isPaused) {
+                    await sleep(100);
+                }
+
+                maxMemory = Math.max(maxMemory, pq.length + visited.size);
+                let curr = pq.shift();
+
+                let stateKey = `${curr.z}-${curr.r}-${curr.c}`;
+                if (visited.has(stateKey)) continue;
+                visited.add(stateKey);
+                nodesExpanded++;
+
+                let hVal = type === "ASTAR" ? heuristic(curr.r, curr.c, curr.z) : 0;
+                let qSnapshotText = pq.values.slice(0, 5).map(item => `[(${item.r},${item.c}) z:${item.z} f:${item.f}]`).join(" ");
+
+                // บันทึก Log พร้อม Open List Snapshot
+                searchHistory[stateKey] = {
+                    r: curr.r,
+                    c: curr.c,
+                    z: curr.z,
+                    g: curr.g,
+                    h: hVal,
+                    f: curr.g + hVal,
+                    step: nodesExpanded,
+                    queueSnapshot: qSnapshotText || "[Empty Queue]"
+                };
+
+                if (lastCurrentDom) {
+                    lastCurrentDom.classList.remove("current");
+                    if (!lastCurrentDom.classList.contains("start") && !lastCurrentDom.classList.contains("goal")) {
+                        lastCurrentDom.classList.add("visited");
+                    }
+                }
+
+                let domCell = document.getElementById(`cell-${curr.z}-${curr.r}-${curr.c}`);
+                domCell.classList.add("current");
+                lastCurrentDom = domCell;
+
+                document.getElementById("inspector").innerHTML = `
+            Current State: (${curr.r}, ${curr.c}) Dim:${curr.z === 0 ? 'A' : 'B'}<br/>
+            g(n) [Path Cost] = ${curr.g}<br/>
+            h(n) [Heuristic] = ${hVal}<br/>
+            f(n) = g + h = ${curr.g + hVal}<br/>
+            Expanded Step: #${nodesExpanded}
+          `;
+
+                document.getElementById("queueTracker").innerText = qSnapshotText || "[Empty Queue]";
+
+                let animDelay = parseInt(document.getElementById("speedSlider").value);
+                await sleep(animDelay);
+
+                if (curr.r === goalState.r && curr.c === goalState.c && curr.z === goalState.z) {
+                    finalNode = curr;
+                    break;
+                }
+
+                for (let n of getNeighbors(curr)) {
+                    let nextG = curr.g + n.cost;
+                    let nextH = type === "ASTAR" ? heuristic(n.r, n.c, n.z) : 0;
+                    pq.push({
+                        r: n.r, c: n.c, z: n.z,
+                        g: nextG, f: nextG + nextH,
+                        path: [...curr.path, { r: n.r, c: n.c, z: n.z }]
+                    });
+                }
+            }
+
+            if (lastCurrentDom) lastCurrentDom.classList.remove("current");
+            let runtime = (performance.now() - t0).toFixed(2);
+
+            const prefix = type.toLowerCase();
+            if (finalNode) {
+                for (let p of finalNode.path) {
+                    let domCell = document.getElementById(`cell-${p.z}-${p.r}-${p.c}`);
+                    if (!domCell.classList.contains("start") && !domCell.classList.contains("goal")) {
+                        domCell.classList.add("path");
+                    }
+                }
+                document.getElementById(`${prefix}-cost`).innerText = finalNode.g;
+                document.getElementById(`${prefix}-nodes`).innerText = nodesExpanded;
+                document.getElementById(`${prefix}-mem`).innerText = maxMemory;
+                document.getElementById(`${prefix}-time`).innerText = `${runtime} ms`;
+            } else {
+                alert("ไม่พบเส้นทางไปยังเป้าหมาย (อาจโดนกำแพงปิดล้อม)");
+            }
+
+            toggleControls(false);
+        }
+
+        window.onload = () => { resetMaps(); };
+    </script>
+</body>
+
+</html>
